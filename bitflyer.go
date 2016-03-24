@@ -24,27 +24,43 @@ type APIClient struct {
 
 // AskBid represents bitFlyer Lightning order book ask or bid record.
 type AskBid struct {
-	Price float64
-	Size  float64
+	Price float64 `json:"price"`
+	Size  float64 `json:"size"`
 }
 
 // OrderBook represents bitFlyer Lightning order book.
 type OrderBook struct {
-	MidPrice int
-	Bids     []AskBid
-	Asks     []AskBid
+	MidPrice int      `json:"mid_price"`
+	Bids     []AskBid `json:"bids"`
+	Asks     []AskBid `json:"asks"`
 }
 
 // AssetBalance represents bitFlyer Lightning asset balance.
 type AssetBalance struct {
-	Balances []Balance
+	Balances []Balance `json:"balances"`
 }
 
 // Balance represents bitFlyer Lightning asset balance record.
 type Balance struct {
-	CurrencyCode string
-	Amount       float64
-	Available    float64
+	CurrencyCode string  `json:"currency_code"`
+	Amount       float64 `json:"amount"`
+	Available    float64 `json:"available"`
+}
+
+// Ticker represents bitFlyer Lightning ticker.
+type Ticker struct {
+	ProductCode     string  `json:"product_code"`
+	Timestamp       string  `json:"timestamp"`
+	TickID          int     `json:"tick_id"`
+	BestBid         float64 `json:"best_bid"`
+	BestAsk         float64 `json:"best_ask"`
+	BestBidSize     float64 `json:"best_bid_size"`
+	BestAskSize     float64 `json:"best_ask_size"`
+	TotalBidDepth   float64 `json:"total_bid_depth"`
+	TotalAskDepth   float64 `json:"total_ask_depth"`
+	LTP             float64 `json:"ltp"`
+	Volume          float64 `json:"volume"`
+	VolumeByProduct float64 `json:"volume_by_product"`
 }
 
 // New creates a new bitFlyer Lightning API client.
@@ -72,6 +88,15 @@ func (api APIClient) GetBalance() (balance Balance, err error) {
 		return balance, err
 	}
 	return balance, nil
+}
+
+// GetTicker returns bitFlyer Lightning ticker.
+func (api APIClient) GetTicker() (ticker Ticker, err error) {
+	err = api.doGetRequest(URL+"/v1/getticker", &ticker)
+	if err != nil {
+		return ticker, err
+	}
+	return ticker, nil
 }
 
 func (api *APIClient) doGetRequest(endpoint string, data interface{}) (err error) {

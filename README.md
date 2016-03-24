@@ -30,7 +30,7 @@ func main() {
 
 Todo:
 - [X] Order Book
-- [ ] Ticker
+- [X] Ticker
 - [X] Get Account Asset Balance
 - [ ] Full public API
 - [ ] Full private API
