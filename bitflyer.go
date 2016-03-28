@@ -30,7 +30,7 @@ type AskBid struct {
 
 // OrderBook represents bitFlyer Lightning order book.
 type OrderBook struct {
-	MidPrice int      `json:"mid_price"`
+	MidPrice float64  `json:"mid_price"`
 	Bids     []AskBid `json:"bids"`
 	Asks     []AskBid `json:"asks"`
 }
