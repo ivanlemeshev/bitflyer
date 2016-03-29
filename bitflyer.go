@@ -36,9 +36,7 @@ type OrderBook struct {
 }
 
 // AssetBalance represents bitFlyer Lightning asset balance.
-type AssetBalance struct {
-	Balances []Balance `json:"balances"`
-}
+type AssetBalance []Balance
 
 // Balance represents bitFlyer Lightning asset balance record.
 type Balance struct {
@@ -74,7 +72,7 @@ func New(key, secret string) (client *APIClient) {
 
 // GetOrderBook returns bitFlyer Lightning order book.
 func (api APIClient) GetOrderBook() (orderBook OrderBook, err error) {
-	err = api.doGetRequest(URL+"/v1/getboard", &orderBook)
+	err = api.doGetRequest("/v1/getboard", &orderBook)
 	if err != nil {
 		return orderBook, err
 	}
@@ -82,17 +80,17 @@ func (api APIClient) GetOrderBook() (orderBook OrderBook, err error) {
 }
 
 // GetBalance returns bitFlyer Lightning account asset balance.
-func (api APIClient) GetBalance() (balance Balance, err error) {
-	err = api.doGetRequest(URL+"/v1/me/getbalance", &balance)
+func (api APIClient) GetBalance() (assetBalance AssetBalance, err error) {
+	err = api.doGetRequest("/v1/me/getbalance", &assetBalance)
 	if err != nil {
-		return balance, err
+		return assetBalance, err
 	}
-	return balance, nil
+	return assetBalance, nil
 }
 
 // GetTicker returns bitFlyer Lightning ticker.
 func (api APIClient) GetTicker() (ticker Ticker, err error) {
-	err = api.doGetRequest(URL+"/v1/getticker", &ticker)
+	err = api.doGetRequest("/v1/getticker", &ticker)
 	if err != nil {
 		return ticker, err
 	}
@@ -113,7 +111,7 @@ func (api *APIClient) doGetRequest(endpoint string, data interface{}) (err error
 }
 
 func (api *APIClient) doRequest(method, endpoint string, headers map[string]string) ([]byte, error) {
-	req, err := http.NewRequest(method, endpoint, nil)
+	req, err := http.NewRequest(method, URL+endpoint, nil)
 	if err != nil {
 		return nil, requestError(err.Error())
 	}
