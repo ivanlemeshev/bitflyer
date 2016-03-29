@@ -32,5 +32,6 @@ Todo:
 - [X] Order Book
 - [X] Ticker
 - [X] Get Account Asset Balance
+- [x] Send a New Order
 - [ ] Full public API
 - [ ] Full private API
