@@ -69,6 +69,7 @@ type Ticker struct {
 
 // Order represents a new child order.
 type Order struct {
+	ID                     int     `json:"id"`
 	ChildOrderAcceptanceID string  `json:"child_order_acceptance_id"`
 	ProductCode            string  `json:"product_code"`
 	ChildOrderType         string  `json:"child_order_type"`
@@ -79,6 +80,14 @@ type Order struct {
 	TimeInForce            string  `json:"time_in_force"`
 	Status                 int     `json:"status"`
 	ErrorMessage           string  `json:"error_message"`
+	AveragePrice           float64 `json:"average_price"`
+	ChildOrderState        string  `json:"child_order_state"`
+	ExpireDate             string  `json:"expire_date"`
+	ChildOrderDate         string  `json:"child_order_date"`
+	OutstandingSize        float64 `json:"outstanding_size"`
+	CancelSize             float64 `json:"cancel_size"`
+	ExecutedSize           float64 `json:"executed_size"`
+	TotalCommission        float64 `json:"total_commission"`
 }
 
 // New creates a new bitFlyer Lightning API client.
@@ -92,7 +101,7 @@ func New(key, secret string) (client *APIClient) {
 
 // GetOrderBook returns bitFlyer Lightning order book.
 func (api APIClient) GetOrderBook() (orderBook OrderBook, err error) {
-	err = api.doGetRequest("/v1/getboard", []byte(""), &orderBook)
+	err = api.doGetRequest("/v1/getboard", map[string]string{}, []byte(""), &orderBook)
 	if err != nil {
 		return orderBook, err
 	}
@@ -101,7 +110,7 @@ func (api APIClient) GetOrderBook() (orderBook OrderBook, err error) {
 
 // GetBalance returns bitFlyer Lightning account asset balance.
 func (api APIClient) GetBalance() (assetBalance AssetBalance, err error) {
-	err = api.doGetRequest("/v1/me/getbalance", []byte(""), &assetBalance)
+	err = api.doGetRequest("/v1/me/getbalance", map[string]string{}, []byte(""), &assetBalance)
 	if err != nil {
 		return assetBalance, err
 	}
@@ -110,7 +119,7 @@ func (api APIClient) GetBalance() (assetBalance AssetBalance, err error) {
 
 // GetTicker returns bitFlyer Lightning ticker.
 func (api APIClient) GetTicker() (ticker Ticker, err error) {
-	err = api.doGetRequest("/v1/getticker", []byte(""), &ticker)
+	err = api.doGetRequest("/v1/getticker", map[string]string{}, []byte(""), &ticker)
 	if err != nil {
 		return ticker, err
 	}
@@ -130,7 +139,7 @@ func (api APIClient) NewOrder(order Order) (newOrder Order, err error) {
 	if err != nil {
 		return newOrder, err
 	}
-	err = api.doPostRequest("/v1/me/sendchildorder", data, &newOrder)
+	err = api.doPostRequest("/v1/me/sendchildorder", map[string]string{}, data, &newOrder)
 	if err != nil {
 		return newOrder, err
 	}
@@ -140,9 +149,17 @@ func (api APIClient) NewOrder(order Order) (newOrder Order, err error) {
 	return newOrder, nil
 }
 
-func (api *APIClient) doGetRequest(endpoint string, body []byte, data interface{}) (err error) {
-	headers := headers(api.key, api.secret, "GET", endpoint, string(body))
-	resp, err := api.doRequest("GET", endpoint, body, headers)
+// GetOrders returns bitFlyer Lightning orders.
+func (api APIClient) GetOrders(query map[string]string) (orders []Order, err error) {
+	err = api.doGetRequest("/v1/me/getchildorders", query, []byte(""), &orders)
+	if err != nil {
+		return orders, err
+	}
+	return orders, nil
+}
+
+func (api *APIClient) doGetRequest(endpoint string, query map[string]string, body []byte, data interface{}) (err error) {
+	resp, err := api.doRequest("GET", endpoint, query, body)
 	if err != nil {
 		return err
 	}
@@ -153,9 +170,8 @@ func (api *APIClient) doGetRequest(endpoint string, body []byte, data interface{
 	return nil
 }
 
-func (api *APIClient) doPostRequest(endpoint string, body []byte, data interface{}) (err error) {
-	headers := headers(api.key, api.secret, "POST", endpoint, string(body))
-	resp, err := api.doRequest("POST", endpoint, body, headers)
+func (api *APIClient) doPostRequest(endpoint string, query map[string]string, body []byte, data interface{}) (err error) {
+	resp, err := api.doRequest("POST", endpoint, query, body)
 	if err != nil {
 		return err
 	}
@@ -166,11 +182,17 @@ func (api *APIClient) doPostRequest(endpoint string, body []byte, data interface
 	return nil
 }
 
-func (api *APIClient) doRequest(method, endpoint string, data []byte, headers map[string]string) ([]byte, error) {
+func (api *APIClient) doRequest(method, endpoint string, query map[string]string, data []byte) ([]byte, error) {
 	req, err := http.NewRequest(method, URL+endpoint, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, requestError(err.Error())
 	}
+	q := req.URL.Query()
+	for key, value := range query {
+		q.Add(key, value)
+	}
+	req.URL.RawQuery = q.Encode()
+	headers := headers(api.key, api.secret, "GET", req.URL.RequestURI(), string(data))
 	setHeaders(req, headers)
 	resp, err := api.client.Do(req)
 	if err != nil {
