@@ -192,7 +192,7 @@ func (api *APIClient) doRequest(method, endpoint string, query map[string]string
 		q.Add(key, value)
 	}
 	req.URL.RawQuery = q.Encode()
-	headers := headers(api.key, api.secret, "GET", req.URL.RequestURI(), string(data))
+	headers := headers(api.key, api.secret, method, req.URL.RequestURI(), string(data))
 	setHeaders(req, headers)
 	resp, err := api.client.Do(req)
 	if err != nil {
