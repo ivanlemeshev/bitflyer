@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -165,6 +166,10 @@ func (api *APIClient) doGetRequest(endpoint string, query map[string]string, bod
 	}
 	err = json.Unmarshal(resp, data)
 	if err != nil {
+
+		log.Printf("err:%s", err.Error())
+		log.Printf("resp:%s", string(resp))
+
 		return err
 	}
 	return nil
