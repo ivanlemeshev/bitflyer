@@ -67,6 +67,23 @@ type Ticker struct {
 	VolumeByProduct float64 `json:"volume_by_product"`
 }
 
+// ErrorResponse ...
+// e.g. {"status":-500,"error_message":"Invalid signature","data":null}
+// e.g. {"status":-500,"error_message":"Key not found","data":null}
+type ErrorResponse struct {
+	Status       int64  `json:"status"`
+	ErrorMessage string `json:"error_message"`
+}
+
+// Error ...
+func (e *ErrorResponse) Error() string {
+	if e.Status != 0 {
+		return fmt.Sprintf("status=%d, message=%s", e.Status, e.ErrorMessage)
+	}
+	return e.ErrorMessage
+
+}
+
 // Order represents a new child order.
 type Order struct {
 	ID                     int     `json:"id"`
@@ -163,8 +180,14 @@ func (api *APIClient) doGetRequest(endpoint string, query map[string]string, bod
 	if err != nil {
 		return resp, err
 	}
-	err = json.Unmarshal(resp, data)
-	if err != nil {
+	jerr := json.Unmarshal(resp, data)
+	if jerr != nil {
+		errRes := ErrorResponse{}
+		jerr = json.Unmarshal(resp, &errRes)
+		if jerr != nil {
+			return resp, err
+		}
+		err = &errRes
 		return resp, err
 	}
 	return resp, nil
@@ -175,8 +198,8 @@ func (api *APIClient) doPostRequest(endpoint string, query map[string]string, bo
 	if err != nil {
 		return resp, err
 	}
-	err = json.Unmarshal(resp, data)
-	if err != nil {
+	jerr := json.Unmarshal(resp, data)
+	if jerr != nil {
 		return resp, err
 	}
 	return resp, nil
