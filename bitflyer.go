@@ -67,6 +67,23 @@ type Ticker struct {
 	VolumeByProduct float64 `json:"volume_by_product"`
 }
 
+// ErrorResponse ...
+// e.g. {"status":-500,"error_message":"Invalid signature","data":null}
+// e.g. {"status":-500,"error_message":"Key not found","data":null}
+type ErrorResponse struct {
+	Status       int64  `json:"status"`
+	ErrorMessage string `json:"error_message"`
+}
+
+// Error ...
+func (e *ErrorResponse) Error() string {
+	if e.Status != 0 {
+		return fmt.Sprintf("status=%d, message=%s", e.Status, e.ErrorMessage)
+	}
+	return e.ErrorMessage
+
+}
+
 // Order represents a new child order.
 type Order struct {
 	ID                     int     `json:"id"`
@@ -100,34 +117,34 @@ func New(key, secret string) (client *APIClient) {
 }
 
 // GetOrderBook returns bitFlyer Lightning order book.
-func (api APIClient) GetOrderBook() (orderBook OrderBook, err error) {
-	err = api.doGetRequest("/v1/getboard", map[string]string{}, []byte(""), &orderBook)
+func (api APIClient) GetOrderBook() (orderBook OrderBook, resp []byte, err error) {
+	resp, err = api.doGetRequest("/v1/getboard", map[string]string{}, []byte(""), &orderBook)
 	if err != nil {
-		return orderBook, err
+		return orderBook, resp, err
 	}
-	return orderBook, nil
+	return orderBook, resp, nil
 }
 
 // GetBalance returns bitFlyer Lightning account asset balance.
-func (api APIClient) GetBalance() (assetBalance AssetBalance, err error) {
-	err = api.doGetRequest("/v1/me/getbalance", map[string]string{}, []byte(""), &assetBalance)
+func (api APIClient) GetBalance() (assetBalance AssetBalance, resp []byte, err error) {
+	resp, err = api.doGetRequest("/v1/me/getbalance", map[string]string{}, []byte(""), &assetBalance)
 	if err != nil {
-		return assetBalance, err
+		return assetBalance, resp, err
 	}
-	return assetBalance, nil
+	return assetBalance, resp, nil
 }
 
 // GetTicker returns bitFlyer Lightning ticker.
-func (api APIClient) GetTicker() (ticker Ticker, err error) {
-	err = api.doGetRequest("/v1/getticker", map[string]string{}, []byte(""), &ticker)
+func (api APIClient) GetTicker() (ticker Ticker, resp []byte, err error) {
+	resp, err = api.doGetRequest("/v1/getticker", map[string]string{}, []byte(""), &ticker)
 	if err != nil {
-		return ticker, err
+		return ticker, resp, err
 	}
-	return ticker, nil
+	return ticker, resp, nil
 }
 
 // NewOrder sends a new order.
-func (api APIClient) NewOrder(order Order) (newOrder Order, err error) {
+func (api APIClient) NewOrder(order Order) (newOrder Order, resp []byte, err error) {
 	newOrder = order
 	if newOrder.MinuteToExpires <= 0 {
 		newOrder.MinuteToExpires = minuteToExpire
@@ -137,49 +154,55 @@ func (api APIClient) NewOrder(order Order) (newOrder Order, err error) {
 	}
 	data, err := json.Marshal(newOrder)
 	if err != nil {
-		return newOrder, err
+		return newOrder, resp, err
 	}
-	err = api.doPostRequest("/v1/me/sendchildorder", map[string]string{}, data, &newOrder)
+	resp, err = api.doPostRequest("/v1/me/sendchildorder", map[string]string{}, data, &newOrder)
 	if err != nil {
-		return newOrder, err
+		return newOrder, resp, err
 	}
 	if newOrder.ErrorMessage != "" {
-		return newOrder, errors.New(newOrder.ErrorMessage)
+		return newOrder, resp, errors.New(newOrder.ErrorMessage)
 	}
-	return newOrder, nil
+	return newOrder, resp, nil
 }
 
 // GetOrders returns bitFlyer Lightning orders.
-func (api APIClient) GetOrders(query map[string]string) (orders []Order, err error) {
-	err = api.doGetRequest("/v1/me/getchildorders", query, []byte(""), &orders)
+func (api APIClient) GetOrders(query map[string]string) (orders []Order, resp []byte, err error) {
+	resp, err = api.doGetRequest("/v1/me/getchildorders", query, []byte(""), &orders)
 	if err != nil {
-		return orders, err
+		return orders, resp, err
 	}
-	return orders, nil
+	return orders, resp, nil
 }
 
-func (api *APIClient) doGetRequest(endpoint string, query map[string]string, body []byte, data interface{}) (err error) {
-	resp, err := api.doRequest("GET", endpoint, query, body)
+func (api *APIClient) doGetRequest(endpoint string, query map[string]string, body []byte, data interface{}) (resp []byte, err error) {
+	resp, err = api.doRequest("GET", endpoint, query, body)
 	if err != nil {
-		return err
+		return resp, err
 	}
-	err = json.Unmarshal(resp, data)
-	if err != nil {
-		return err
+	jerr := json.Unmarshal(resp, data)
+	if jerr != nil {
+		errRes := ErrorResponse{}
+		jerr = json.Unmarshal(resp, &errRes)
+		if jerr != nil {
+			return resp, err
+		}
+		err = &errRes
+		return resp, err
 	}
-	return nil
+	return resp, nil
 }
 
-func (api *APIClient) doPostRequest(endpoint string, query map[string]string, body []byte, data interface{}) (err error) {
-	resp, err := api.doRequest("POST", endpoint, query, body)
+func (api *APIClient) doPostRequest(endpoint string, query map[string]string, body []byte, data interface{}) (resp []byte, err error) {
+	resp, err = api.doRequest("POST", endpoint, query, body)
 	if err != nil {
-		return err
+		return resp, err
 	}
-	err = json.Unmarshal(resp, data)
-	if err != nil {
-		return err
+	jerr := json.Unmarshal(resp, data)
+	if jerr != nil {
+		return resp, err
 	}
-	return nil
+	return resp, nil
 }
 
 func (api *APIClient) doRequest(method, endpoint string, query map[string]string, data []byte) ([]byte, error) {
